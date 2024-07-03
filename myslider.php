@@ -10,9 +10,13 @@
  * Author URI: https://github.com
  * License: GPL v2 or later
  * Licence URI: https://github.com
- * Text Domain: myslider-myrs
+ * Text Domain: my_slider
  * Domain Path: /languages
  *
+ */
+
+/*
+ * TODO: NEED TO ADD LANGUAGES STRING SUPPORT i18
  */
 
 if (!defined('ABSPATH')) {
@@ -31,6 +35,10 @@ if (!class_exists('MY_SLIDER')) {
         {
             $this->define_constants();
 
+            $this->load_text_domain();
+
+            require_once(MY_SLIDER_PATH . 'functions/functions.php');
+
             add_action('admin_menu', array($this, 'add_menu'));
 
             require_once(MY_SLIDER_PATH . 'post-types/class.my-slider-cpt.php');
@@ -38,6 +46,12 @@ if (!class_exists('MY_SLIDER')) {
 
             require_once(MY_SLIDER_PATH . 'class.my-slider-settings.php');
             $MY_Slider_Settings = new MY_Slider_Settings();
+
+            require_once(MY_SLIDER_PATH . 'shortcodes/class.my-slider-shortcode.php');
+            $MY_Slider_Shortcode = new MY_Slider_Shortcode();
+
+            add_action('wp_enqueue_scripts', array($this, 'register_scripts'), 999);
+            add_action('admin_enqueue_scripts', array($this, 'register_admin_scripts'), 999);
         }
 
         public function define_constants()
@@ -66,7 +80,27 @@ if (!class_exists('MY_SLIDER')) {
 
         public static function uninstall()
         {
+            delete_option( 'my_slider_options' );
 
+            $posts = get_posts(
+                array(
+                    'post_type' => 'my-slider',
+                    'number_posts'  => -1,
+                    'post_status'   => 'any'
+                )
+            );
+
+            foreach( $posts as $post ){
+                wp_delete_post( $post->ID, true );
+            }
+        }
+
+        public function load_text_domain(){
+            load_plugin_textdomain(
+                'my_slider',
+                false,
+                dirname(plugin_basename(__FILE__)) . '/languages/'
+            );
         }
 
         public function add_menu(): void
@@ -116,21 +150,40 @@ if (!class_exists('MY_SLIDER')) {
              */
 
         }
-        public function my_slider_settings_page(){
-            if(!current_user_can('manage_options')){
+
+        public function my_slider_settings_page()
+        {
+            if (!current_user_can('manage_options')) {
                 return;
             }
-            if(isset($_GET['settings-updated'])){
+            if (isset($_GET['settings-updated'])) {
                 add_settings_error('my_slider_options', 'my_slider_message', ' Settings saved', 'success');
             }
             settings_errors('my_slider_options');
-           require(MY_SLIDER_PATH . 'views/settings-page.php');
+            require(MY_SLIDER_PATH . 'views/settings-page.php');
+        }
+
+        public function register_scripts()
+        {
+            wp_register_style('my_slider_main_css', MY_SLIDER_URL . 'vendor/flexslider/flexslider.css', array(), MY_SLIDER_VERSION, 'all');
+            wp_register_style('my_slider_custom_css', MY_SLIDER_URL . 'assets/css/frontend.css', array(), MY_SLIDER_VERSION, 'all');
+            wp_register_script('my_slider_main_jq', MY_SLIDER_URL . 'vendor/flexslider/jquery.flexslider-min.js', array('jquery'), MY_SLIDER_VERSION, true);
+            wp_register_script('my_slider_options', MY_SLIDER_URL . 'vendor/flexslider/flexslider.js', array('jquery'), MY_SLIDER_VERSION, true);
+        }
+
+        public function register_admin_scripts()
+        {
+            global $typenow;
+            if ($typenow == 'my_slider') {
+                wp_enqueue_style('my_slider_admin_css', MY_SLIDER_URL . 'assets/css/admin.css', array(), MY_SLIDER_VERSION, 'all');
+            }
         }
     }
 }
 
 if (class_exists('MY_SLIDER')) {
     register_activation_hook(__FILE__, array('MY_SLIDER', 'activate'));
+    register_deactivation_hook(__FILE__, array('MY_SLIDER', 'deactivate'));
     register_uninstall_hook(__FILE__, array('MY_SLIDER', 'uninstall'));
     $my_slider = new MY_SLIDER();
 }
