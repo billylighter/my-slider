@@ -8,11 +8,8 @@
             'post_status' => 'publish',
         );
 
-        (!empty($id)) ? $args['post__in'] = $id : array();
+        (!empty($id)) ? $args['post__in'] = $id : 'any';
         (!empty($orderby)) ? $args['orderby'] = $orderby : 'date';
-
-        var_dump($id);
-
 
         $my_query = new WP_Query($args);
 
